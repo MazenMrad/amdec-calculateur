@@ -27,6 +27,40 @@ const ECHELLES = {
   ]
 };
 
+// Bloc d'entête du tableau (comme l'onglet AMDEC Analyse du tableur de référence)
+const META_EXEMPLE = {
+  projet: "Sujet 1 : Calculateur AMDEC",
+  responsable: "Équipe projet",
+  systeme: "Convoyeur à bande motorisé CBT-2000",
+  equipe: "Maintenance / Production",
+  date: "29/09/2026",
+  revision: "V1.0"
+};
+
+// Suivi des actions : [responsable, échéance, F' résiduel, G' résiduel]
+// F' et G' sont les estimations après action corrective (D inchangée, comme G'/O'/NPR' du tableur).
+// Si l'action ne réduit ni F ni G (ex. gain sur la seule détection), F'=F et G'=G.
+const SUIVI_EXEMPLE = [
+  ["Production", "15/02/2026", 2, 3],
+  ["Maintenance", "20/02/2026", 1, 5],
+  ["Maintenance", "10/02/2026", 2, 2],
+  ["Production", "12/02/2026", 2, 4],
+  ["Maintenance", "28/02/2026", 1, 5],
+  ["Maintenance", "18/02/2026", 1, 3],
+  ["Maintenance", "08/02/2026", 2, 2],
+  ["Méthodes", "01/03/2026", 1, 5],
+  ["Maintenance", "14/02/2026", 1, 3],
+  ["Maintenance", "18/02/2026", 1, 5],
+  ["Maintenance", "22/02/2026", 2, 2],
+  ["Méthodes", "01/03/2026", 1, 5],
+  ["Production", "05/02/2026", 2, 2],
+  ["Production", "05/02/2026", 2, 2],
+  ["Sécurité", "01/02/2026", 1, 5],
+  ["Électricien", "12/02/2026", 2, 3],
+  ["Électricien", "19/02/2026", 1, 4],
+  ["Électricien", "25/02/2026", 1, 4]
+];
+
 // Seuils de criticité (C max = 125)
 const SEUILS = [
   { max: 15, label: "Acceptable", color: "#16a34a", bg: "#dcfce7" },
@@ -61,3 +95,12 @@ const ETUDE_EXEMPLE = [
   { composant: "Armoire électrique", mode: "Relais thermique défaillant (ne déclenche pas)", cause: "Vieillissement, contact collé", effet: "Moteur non protégé → destruction en cas de surcharge", F: 2, G: 4, D: 4, origine: "rapporté", action: "Test annuel au banc + remplacement préventif 5 ans" },
   { composant: "Armoire électrique", mode: "Câble d'alimentation sectionné", cause: "Frottement sur arête, rongeur", effet: "Arrêt + risque d'électrisation", F: 2, G: 5, D: 2, origine: "rapporté", action: "Chemin de câble + gaine renforcée, contrôle visuel semestriel" }
 ];
+
+// Applique le suivi des actions à l'étude exemple (après la définition du tableau)
+ETUDE_EXEMPLE.forEach((r, i) => {
+  const s = SUIVI_EXEMPLE[i] || ["", "", r.F, r.G];
+  r.responsable = s[0];
+  r.echeance = s[1];
+  r.Fp = s[2];
+  r.Gp = s[3];
+});

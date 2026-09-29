@@ -1,24 +1,64 @@
 /* Calculateur AMDEC : logique applicative (100 % client, localStorage) */
 const LS_KEY = "amdec-lignes-v1";
+const LS_META = "amdec-meta-v1";
 let lignes = [];
+let meta = { ...META_EXEMPLE };
 let triDecroissant = true;
 let chartPareto = null;
+let chartComparaison = null;
 let filtre = "";
 
 const $ = (id) => document.getElementById(id);
 
 function uid() { return "id-" + Date.now().toString(36) + "-" + Math.floor(Math.random() * 1e6); }
 function calcC(l) { return (Number(l.F) || 0) * (Number(l.G) || 0) * (Number(l.D) || 0); }
+function calcCp(l) { return (Number(l.Fp ?? l.F) || 0) * (Number(l.Gp ?? l.G) || 0) * (Number(l.D) || 0); }
+function clamp(v) { v = Number(v); return v >= 1 && v <= 5 ? v : 3; }
+
+// Normalise une ligne (migration des données saisies avant les colonnes actions/suivi)
+function normalize(l) {
+  return {
+    id: l.id || uid(),
+    composant: l.composant || "",
+    mode: l.mode || "",
+    cause: l.cause || "",
+    effet: l.effet || "",
+    F: clamp(l.F), G: clamp(l.G), D: clamp(l.D),
+    origine: l.origine || "hypothèse",
+    action: l.action || "",
+    responsable: l.responsable || "",
+    echeance: l.echeance || "",
+    Fp: clamp(l.Fp ?? l.F),
+    Gp: clamp(l.Gp ?? l.G)
+  };
+}
 
 /* ---------- persistance ---------- */
 function save() { localStorage.setItem(LS_KEY, JSON.stringify(lignes)); }
+function saveMeta() { localStorage.setItem(LS_META, JSON.stringify(meta)); }
 function load() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) { lignes = JSON.parse(raw); return; }
+    if (raw) { lignes = JSON.parse(raw).map(normalize); return; }
   } catch (e) { /* ignore */ }
-  lignes = ETUDE_EXEMPLE.map((r) => ({ id: uid(), ...structuredClone(r) }));
+  lignes = ETUDE_EXEMPLE.map((r) => normalize({ ...structuredClone(r) }));
   save();
+}
+function loadMeta() {
+  try {
+    const raw = localStorage.getItem(LS_META);
+    if (raw) { meta = { ...META_EXEMPLE, ...JSON.parse(raw) }; return; }
+  } catch (e) { /* ignore */ }
+  meta = { ...META_EXEMPLE };
+  saveMeta();
+}
+function renderMeta() {
+  $("m-projet").value = meta.projet || "";
+  $("m-responsable").value = meta.responsable || "";
+  $("m-systeme").value = meta.systeme || "";
+  $("m-equipe").value = meta.equipe || "";
+  $("m-date").value = meta.date || "";
+  $("m-revision").value = meta.revision || "";
 }
 
 /* ---------- onglets ---------- */
@@ -45,13 +85,18 @@ function selectTab(b) {
 
 /* ---------- tableau calculateur ---------- */
 function lignesVisibles() {
-  let arr = lignes.map((l) => ({ ...l, C: calcC(l) }));
+  let arr = lignes.map((l) => ({ ...l, C: calcC(l), Cp: calcCp(l) }));
   if (filtre) {
     const f = filtre.toLowerCase();
-    arr = arr.filter((l) => [l.composant, l.mode, l.cause, l.effet, l.origine, l.action].join(" ").toLowerCase().includes(f));
+    arr = arr.filter((l) => [l.composant, l.mode, l.cause, l.effet, l.origine, l.action, l.responsable].join(" ").toLowerCase().includes(f));
   }
   if (triDecroissant) arr.sort((a, b) => b.C - a.C);
   return arr;
+}
+
+function cellC(c) {
+  const s = classeCriticite(c);
+  return `<span class="badge" style="color:${s.color};background:${s.bg}">${c}</span>`;
 }
 
 function badgeClasse(c) {
@@ -66,7 +111,7 @@ function renderTable() {
   if (arr.length === 0) {
     const tr = document.createElement("tr");
     tr.className = "empty-row";
-    tr.innerHTML = `<td colspan="12"><div class="empty-box">
+    tr.innerHTML = `<td colspan="17"><div class="empty-box">
       <p>${lignes.length === 0 ? "Aucun mode de défaillance saisi pour le moment." : "Aucun mode ne correspond au filtre."}</p>
       ${lignes.length === 0 ? `<button class="btn primary" data-action="add-first">Ajouter le premier mode</button>
       <button class="btn" data-action="load-exemple">Charger l'étude exemple (18)</button>` : ""}
@@ -83,13 +128,18 @@ function renderTable() {
       <td class="num">${i + 1}</td>
       <td><strong>${esc(l.composant)}</strong></td>
       <td>${esc(l.mode)}</td>
-      <td class="small">${esc(l.cause)}</td>
       <td class="small">${esc(l.effet)}</td>
+      <td class="small">${esc(l.cause)}</td>
       <td class="center"><span class="idx" title="${tip("F", l.F)}">F${l.F}</span></td>
       <td class="center"><span class="idx" title="${tip("G", l.G)}">G${l.G}</span></td>
       <td class="center"><span class="idx" title="${tip("D", l.D)}">D${l.D}</span></td>
-      <td class="center"><strong>${l.C}</strong></td>
-      <td>${badgeClasse(l.C)}</td>
+      <td class="center">${cellC(l.C)}</td>
+      <td class="small">${esc(l.action) || "<span class='muted'>à définir</span>"}</td>
+      <td class="small">${esc(l.responsable) || "<span class='muted'>à définir</span>"}</td>
+      <td class="center small">${esc(l.echeance) || "<span class='muted'>à définir</span>"}</td>
+      <td class="center"><span class="idx">F'${l.Fp}</span></td>
+      <td class="center"><span class="idx">G'${l.Gp}</span></td>
+      <td class="center">${cellC(l.Cp)}</td>
       <td class="center"><span class="origine origine-${esc(l.origine)}">${esc(l.origine)}</span></td>
       <td class="row-actions">
         <button class="btn xs" data-edit="${l.id}" aria-label="Modifier : ${esc(l.mode)}">Modifier</button>
@@ -131,6 +181,9 @@ function renderStats(arr) {
   $("stat-max").textContent = max;
   $("stat-moy").textContent = moy.toFixed(1);
   $("stat-crit").textContent = nbCrit;
+  const cps = arr.map((l) => l.Cp);
+  $("stat-maxp").textContent = cps.length ? Math.max(...cps) : 0;
+  $("stat-gain").textContent = cs.reduce((a, b) => a + b, 0) - cps.reduce((a, b) => a + b, 0);
   $("top3").innerHTML = arr.slice(0, 3).map((l, i) =>
     `<div class="top-item"><span class="rank">#${i + 1}</span> <strong>${esc(l.mode)}</strong> <span class="muted">(${esc(l.composant)}, C=${l.C})</span></div>`).join("") || `<p class="muted">Aucune donnée.</p>`;
 }
@@ -149,6 +202,10 @@ function openModal(ligne) {
   $("f-D").value = ligne?.D ?? 2;
   $("f-origine").value = ligne?.origine || "observé";
   $("f-action").value = ligne?.action || "";
+  $("f-responsable").value = ligne?.responsable || "";
+  $("f-echeance").value = ligne?.echeance || "";
+  $("f-Fp").value = ligne?.Fp ?? ligne?.F ?? 3;
+  $("f-Gp").value = ligne?.Gp ?? ligne?.G ?? 3;
   updateModalC();
   $("modal").classList.add("open");
   $("f-composant").focus();
@@ -156,21 +213,26 @@ function openModal(ligne) {
 function closeModal() { $("modal").classList.remove("open"); }
 function updateModalC() {
   const c = Number($("f-F").value) * Number($("f-G").value) * Number($("f-D").value);
-  $("modal-c").innerHTML = `Criticité calculée : <strong>${c}</strong> ${badgeClasse(c)}`;
+  const cp = Number($("f-Fp").value) * Number($("f-Gp").value) * Number($("f-D").value);
+  $("modal-c").innerHTML = `Criticité : <strong>${c}</strong> ${badgeClasse(c)} &nbsp; C' après action : <strong>${cp}</strong> ${badgeClasse(cp)}`;
 }
 function submitModal() {
-  const obj = {
+  const obj = normalize({
+    id: editingId || undefined,
     composant: $("f-composant").value.trim() || "Sans composant",
     mode: $("f-mode").value.trim() || "Mode non nommé",
     cause: $("f-cause").value.trim(),
     effet: $("f-effet").value.trim(),
     F: Number($("f-F").value), G: Number($("f-G").value), D: Number($("f-D").value),
-    origine: $("f-origine").value, action: $("f-action").value.trim()
-  };
+    origine: $("f-origine").value, action: $("f-action").value.trim(),
+    responsable: $("f-responsable").value.trim(),
+    echeance: $("f-echeance").value.trim(),
+    Fp: Number($("f-Fp").value), Gp: Number($("f-Gp").value)
+  });
   if (editingId) {
     const i = lignes.findIndex((l) => l.id === editingId);
-    if (i >= 0) lignes[i] = { id: editingId, ...obj };
-  } else lignes.push({ id: uid(), ...obj });
+    if (i >= 0) lignes[i] = obj;
+  } else lignes.push(obj);
   save(); closeModal(); renderAll();
 }
 
@@ -179,6 +241,39 @@ function renderCharts() {
   const arr = lignesVisibles();
   renderPareto(arr);
   renderMatrice(arr);
+  renderComparaison(arr);
+}
+
+function renderComparaison(arr) {
+  const ctx = $("comparaisonChart");
+  if (!ctx) return;
+  if (typeof window.Chart === "undefined") {
+    $("comparaison-note").textContent = "Graphique indisponible : la librairie Chart.js n'a pas chargé (hors ligne).";
+    return;
+  }
+  if (chartComparaison) { chartComparaison.destroy(); chartComparaison = null; }
+  const top = [...arr].sort((a, b) => b.C - a.C).slice(0, 10);
+  const labels = top.map((l) => (l.mode.length > 26 ? l.mode.slice(0, 25) + "…" : l.mode));
+  chartComparaison = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: [
+      { label: "C avant", data: top.map((l) => l.C), backgroundColor: "#1d4ed8" },
+      { label: "C' après", data: top.map((l) => l.Cp), backgroundColor: "#16a34a" }
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "top" } },
+      scales: {
+        x: { ticks: { maxRotation: 45, minRotation: 45, font: { size: 10 } } },
+        y: { beginAtZero: true, title: { display: true, text: "Criticité" } }
+      }
+    }
+  });
+  const gain = top.reduce((a, l) => a + l.C - l.Cp, 0);
+  const restants = top.filter((l) => l.Cp > 30).length;
+  $("comparaison-note").innerHTML = top.length
+    ? `Sur le top 10, les actions font gagner <strong>${gain} points</strong> de criticité. ${restants === 0 ? "Tous les C' passent sous le seuil de 30." : `<strong>${restants} mode(s)</strong> restent au-dessus de 30 : renforcez leurs actions.`}`
+    : "Ajoutez des modes pour afficher la comparaison.";
 }
 
 function renderPareto(arr) {
@@ -249,25 +344,37 @@ function renderMatrice(arr) {
 /* ---------- exports ---------- */
 function rowsExport() {
   return lignesVisibles().map((l, i) => ({
-    "N°": i + 1, "Composant": l.composant, "Mode de défaillance": l.mode,
-    "Cause": l.cause, "Effet": l.effet, "F": l.F, "G": l.G, "D": l.D,
+    "N°": i + 1, "Fonction": l.composant, "Mode de défaillance": l.mode,
+    "Effet": l.effet, "Cause": l.cause, "F": l.F, "G": l.G, "D": l.D,
     "Criticité C": l.C, "Classe": classeCriticite(l.C).label,
-    "Origine info": l.origine, "Action proposée": l.action || ""
+    "Action corrective": l.action || "", "Responsable": l.responsable || "",
+    "Échéance": l.echeance || "", "F'": l.Fp, "G'": l.Gp, "Criticité C'": l.Cp,
+    "Origine info": l.origine
   }));
 }
 
 function exportExcel() {
   if (typeof window.XLSX === "undefined") { toast("Export indisponible : librairie XLSX non chargée (hors ligne).", true); return; }
-  const ws = XLSX.utils.json_to_sheet(rowsExport());
-  ws["!cols"] = [{ wch: 5 }, { wch: 22 }, { wch: 30 }, { wch: 32 }, { wch: 32 }, { wch: 5 }, { wch: 5 }, { wch: 5 }, { wch: 11 }, { wch: 18 }, { wch: 13 }, { wch: 38 }];
+  const head = ["N°", "Fonction", "Mode de défaillance", "Effet", "Cause", "F", "G", "D", "C", "Action corrective", "Responsable", "Échéance", "F'", "G'", "C'", "Origine"];
+  const aoa = [
+    ["ANALYSE DES MODES DE DÉFAILLANCE, DE LEURS EFFETS ET DE LEUR CRITICITÉ (AMDEC)"],
+    [`Projet/Processus: ${meta.projet}`, "", "", "", "", "", "", "", "Date:", meta.date || ""],
+    [`Responsable: ${meta.responsable}`, "", "", "", "", "", "", "", "Révision:", meta.revision || ""],
+    [`Système: ${meta.systeme}`, "", "", "", "", "", "", "", "Équipe:", meta.equipe || ""],
+    [],
+    head,
+    ...lignesVisibles().map((l, i) => [i + 1, l.composant, l.mode, l.effet, l.cause, l.F, l.G, l.D, l.C, l.action, l.responsable, l.echeance, l.Fp, l.Gp, l.Cp, l.origine])
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [{ wch: 5 }, { wch: 22 }, { wch: 30 }, { wch: 30 }, { wch: 30 }, { wch: 5 }, { wch: 5 }, { wch: 5 }, { wch: 8 }, { wch: 34 }, { wch: 14 }, { wch: 12 }, { wch: 5 }, { wch: 5 }, { wch: 8 }, { wch: 12 }];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "AMDEC");
+  XLSX.utils.book_append_sheet(wb, ws, "AMDEC Analyse");
   const ws2 = XLSX.utils.json_to_sheet([
     ...ECHELLES.F.map((e) => ({ Échelle: "F" + e.n + " " + e.label, Définition: e.def })),
     ...ECHELLES.G.map((e) => ({ Échelle: "G" + e.n + " " + e.label, Définition: e.def })),
     ...ECHELLES.D.map((e) => ({ Échelle: "D" + e.n + " " + e.label, Définition: e.def }))
   ]);
-  XLSX.utils.book_append_sheet(wb, ws2, "Échelles FGD");
+  XLSX.utils.book_append_sheet(wb, ws2, "Grille d'évaluation");
   XLSX.writeFile(wb, "AMDEC-convoyeur-bande.xlsx");
 }
 
@@ -290,28 +397,28 @@ function importJSON(file) {
     try {
       const data = JSON.parse(r.result);
       if (!Array.isArray(data)) throw new Error("format");
-      lignes = data.map((l) => ({ id: uid(), composant: l.composant || "", mode: l.mode || "", cause: l.cause || "", effet: l.effet || "", F: clamp(l.F), G: clamp(l.G), D: clamp(l.D), origine: l.origine || "hypothèse", action: l.action || "" }));
+      lignes = data.map((l) => normalize(l));
       save(); renderAll(); toast("Import JSON réussi.");
     } catch { toast("Fichier JSON invalide.", true); }
   };
   r.readAsText(file);
 }
-function clamp(v) { v = Number(v); return v >= 1 && v <= 5 ? v : 3; }
 
 function exportPDF() {
   if (typeof window.jspdf === "undefined") { toast("Export indisponible : librairie jsPDF non chargée (hors ligne).", true); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-  doc.setFontSize(14); doc.text("Étude AMDEC : Convoyeur à bande motorisé (C = F x G x D)", 14, 12);
+  doc.setFontSize(14); doc.text("Analyse des modes de défaillance, de leurs effets et de leur criticité (AMDEC)", 14, 12);
   doc.setFontSize(9); doc.setTextColor(100);
-  doc.text(`Généré le ${new Date().toLocaleString("fr-FR")}, ${lignes.length} modes, triés par criticité décroissante`, 14, 18);
+  doc.text(`Projet: ${meta.projet} | Système: ${meta.systeme} | Responsable: ${meta.responsable}`, 14, 18);
+  doc.text(`Équipe: ${meta.equipe} | Date: ${meta.date} | Révision: ${meta.revision} | ${lignes.length} modes, triés par criticité décroissante`, 14, 23);
   doc.autoTable({
-    startY: 22,
-    head: [["N°", "Composant", "Mode", "Cause", "Effet", "F", "G", "D", "C", "Classe", "Origine"]],
-    body: lignesVisibles().map((l, i) => [i + 1, l.composant, l.mode, l.cause, l.effet, l.F, l.G, l.D, l.C, classeCriticite(l.C).label, l.origine]),
-    styles: { fontSize: 7, cellPadding: 1.5 },
+    startY: 27,
+    head: [["N°", "Fonction", "Mode", "Effet", "Cause", "F", "G", "D", "C", "Action", "Resp.", "Éch.", "F'", "G'", "C'"]],
+    body: lignesVisibles().map((l, i) => [i + 1, l.composant, l.mode, l.effet, l.cause, l.F, l.G, l.D, l.C, l.action, l.responsable, l.echeance, l.Fp, l.Gp, l.Cp]),
+    styles: { fontSize: 6, cellPadding: 1.2 },
     headStyles: { fillColor: [15, 23, 42] },
-    didParseCell(d) { if (d.section === "body" && d.column.index === 8) {
+    didParseCell(d) { if (d.section === "body" && (d.column.index === 8 || d.column.index === 14)) {
       const c = Number(d.cell.raw); const s = classeCriticite(c);
       d.cell.styles.textColor = s.color; d.cell.styles.fontStyle = "bold";
     }}
@@ -321,7 +428,14 @@ function exportPDF() {
     const img = $("paretoChart").toDataURL("image/png");
     doc.addPage(); doc.setFontSize(12); doc.setTextColor(0); doc.text("Diagramme de Pareto des criticités", 14, 12);
     doc.addImage(img, "PNG", 14, 18, 265, 120);
-  } catch { /* canvas tainted? ignore */ }
+  } catch { /* canvas vide : ignore */ }
+  try {
+    const img2 = $("comparaisonChart").toDataURL("image/png");
+    if (img2.length > 5000) {
+      doc.addPage(); doc.setFontSize(12); doc.setTextColor(0); doc.text("Comparaison C avant / C' après actions", 14, 12);
+      doc.addImage(img2, "PNG", 14, 18, 265, 120);
+    }
+  } catch { /* canvas vide : ignore */ }
   doc.save("AMDEC-convoyeur-bande.pdf");
 }
 
@@ -354,7 +468,7 @@ function renderEtude() {
 function renderAll() { renderTable(); }
 
 document.addEventListener("DOMContentLoaded", () => {
-  load(); initTabs(); renderEchelles(); renderEtude(); renderAll();
+  load(); loadMeta(); initTabs(); renderMeta(); renderEchelles(); renderEtude(); renderAll();
   $("btn-add").addEventListener("click", () => openModal(null));
   $("btn-exemple").addEventListener("click", chargerExemple);
   $("btn-clear").addEventListener("click", () => {
@@ -379,6 +493,9 @@ document.addEventListener("DOMContentLoaded", () => {
   $("modal-cancel").addEventListener("click", closeModal);
   $("modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
   $("modal-save").addEventListener("click", submitModal);
-  ["f-F", "f-G", "f-D"].forEach((id) => $(id).addEventListener("change", updateModalC));
+  ["f-F", "f-G", "f-D", "f-Fp", "f-Gp"].forEach((id) => $(id).addEventListener("change", updateModalC));
+  [["m-projet", "projet"], ["m-responsable", "responsable"], ["m-systeme", "systeme"], ["m-equipe", "equipe"], ["m-date", "date"], ["m-revision", "revision"]].forEach(([id, key]) => {
+    $(id).addEventListener("change", (e) => { meta[key] = e.target.value; saveMeta(); });
+  });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
 });

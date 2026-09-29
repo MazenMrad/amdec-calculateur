@@ -13,11 +13,13 @@ Outil web + site de rendu final. **Stack choisie : site statique (HTML/CSS/JS)**
 Excel/VBA a été écarté (mono-poste, macros bloquées en soutenance) et Python/Flask aussi (serveur à installer, pas « public » en 1 clic). Le statique se publie sur **GitHub Pages / Netlify / Vercel / Cloudflare Pages** gratuitement.
 
 ## Fonctionnalités (exigences du sujet)
-- [x] Saisie composants, modes, causes, effets, F/G/D (+ origine observé/rapporté/hypothèse, action)
-- [x] `C = F × G × D` auto, tri décroissant, Top 3, stats (max, moyenne, nb C>30)
-- [x] Pareto (top 15 + % cumulé + lecture 80/20) + matrice G×F colorée par classe
-- [x] Exports Excel / PDF / CSV / JSON, import JSON, impression
-- [x] Étude 18 modes (≥ 15) sur convoyeur à bande, 6 composants
+- [x] Bloc d'entête : projet, responsable, système, équipe, date, révision (sauvegardé, repris en exports)
+- [x] Saisie fonction, mode, effet, cause, F/G/D (+ origine observé/rapporté/hypothèse)
+- [x] `C = F × G × D` auto + `C' = F' × G' × D` résiduel après action, tri décroissant, Top 3, stats (max, moyenne, nb C>30, C' max, gain total)
+- [x] Actions correctives avec responsable et échéance, F'/G' estimés
+- [x] Pareto (top 15 + % cumulé + lecture 80/20) + matrice G×F + comparaison C avant / C' après
+- [x] Exports Excel (onglets AMDEC Analyse + Grille d'évaluation) / PDF (tableau + graphes) / CSV / JSON, import JSON, impression
+- [x] Étude 18 modes (≥ 15) sur convoyeur à bande, 6 fonctions
 - [x] Échelles F/G/D 1–5 + seuils (≤15 / 16–30 / 31–60 / >60)
 - [x] Tableau Séance 2 + guide utilisateur intégrés (onglets)
 

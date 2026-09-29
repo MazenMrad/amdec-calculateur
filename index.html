@@ -32,6 +32,18 @@
 
 <!-- ================= CALCULATEUR ================= -->
 <section id="tab-calculateur" class="tab-panel active" role="tabpanel" aria-labelledby="tabbtn-calculateur" tabindex="0">
+  <div class="card meta-card">
+    <h3>Analyse des modes de défaillance, de leurs effets et de leur criticité (AMDEC)</h3>
+    <div class="meta-grid">
+      <label>Projet / Processus<input id="m-projet" value=""></label>
+      <label>Responsable<input id="m-responsable" value=""></label>
+      <label>Système / Équipement<input id="m-systeme" value=""></label>
+      <label>Équipe<input id="m-equipe" value=""></label>
+      <label>Date<input id="m-date" value=""></label>
+      <label>Révision<input id="m-revision" value=""></label>
+    </div>
+    <p class="muted">Enregistrement automatique dans le navigateur. Repris dans les exports Excel et PDF.</p>
+  </div>
   <div class="toolbar">
     <button id="btn-add" class="btn primary">Ajouter un mode</button>
     <button id="btn-exemple" class="btn">Charger l'étude exemple (18)</button>
@@ -53,9 +65,11 @@
 
   <div class="stats">
     <div class="stat"><span id="stat-total">0</span><label>modes</label></div>
-    <div class="stat"><span id="stat-max">0</span><label>Criticité max</label></div>
+    <div class="stat"><span id="stat-max">0</span><label>Criticité max (avant)</label></div>
     <div class="stat"><span id="stat-moy">0</span><label>Criticité moyenne</label></div>
     <div class="stat alert"><span id="stat-crit">0</span><label>modes C &gt; 30</label></div>
+    <div class="stat"><span id="stat-maxp">0</span><label>Criticité max (après)</label></div>
+    <div class="stat ok"><span id="stat-gain">0</span><label>gain total ΣC − ΣC'</label></div>
   </div>
 
   <div class="card">
@@ -64,13 +78,13 @@
   </div>
 
   <div class="card table-card">
-    <div class="table-head"><h3>Tableau AMDEC <span id="count" class="muted"></span></h3><p class="muted">Survolez F/G/D pour voir la définition. Utilisez Modifier pour éditer une ligne.</p></div>
+    <div class="table-head"><h3>Tableau AMDEC <span id="count" class="muted"></span></h3><p class="muted">Survolez F/G/D pour voir la définition. Utilisez Modifier pour éditer une ligne. F', G', C' : valeurs résiduelles estimées après action corrective (D inchangée).</p></div>
     <div class="table-scroll"><table>
       <thead><tr>
-        <th>#</th><th>Composant</th><th>Mode de défaillance</th><th>Cause</th><th>Effet</th>
-        <th>F</th><th>G</th><th>D</th><th>C</th><th>Classe</th><th>Origine</th><th><span class="sr-only">Actions</span></th>
+        <th>N°</th><th>Fonction</th><th>Mode de défaillance</th><th>Effet</th><th>Cause</th>
+        <th>F</th><th>G</th><th>D</th><th>C</th><th>Action corrective</th><th>Responsable</th><th>Échéance</th><th>F'</th><th>G'</th><th>C'</th><th>Origine</th><th><span class="sr-only">Actions</span></th>
       </tr></thead>
-      <tbody id="tbody"><tr class="loading-row"><td colspan="12">Chargement des données…</td></tr></tbody>
+      <tbody id="tbody"><tr class="loading-row"><td colspan="17">Chargement des données…</td></tr></tbody>
     </table></div>
   </div>
 </section>
@@ -93,10 +107,13 @@
       <span><i class="dot" style="background:#c2410c"></i>Action 31–60</span>
       <span><i class="dot" style="background:#b91c1c"></i>Inacceptable &gt; 60</span>
     </div>
+  <div class="card">
+    <h3>Comparaison C avant / C' après actions (top 10)</h3>
+    <p class="muted">Barres bleues : criticité initiale C. Barres vertes : criticité résiduelle C' = F' × G' × D après action corrective.</p>
+    <div class="chart-box"><canvas id="comparaisonChart" role="img" aria-label="Comparaison des criticités avant et après actions"></canvas></div>
+    <p id="comparaison-note" class="note" role="status"></p>
   </div>
 </section>
-
-<!-- ================= ECHELLES ================= -->
 <section id="tab-echelles" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-echelles" tabindex="0">
   <div class="card"><h3>Échelles F / G / D (1 à 5), définies avec le terrain de stage</h3>
     <p class="muted">F : Fréquence. G : Gravité. D : Non-détection (D=5 : indétectable). C = F × G × D, max 125.</p></div>
@@ -134,13 +151,16 @@
   <div class="card guide">
     <h3>Guide utilisateur (2 pages, à joindre au rendu)</h3>
     <h4>1. Saisir (2 min)</h4>
-    <ol><li>Cliquez <strong>Ajouter un mode</strong> (ou Modifier sur une ligne). Renseignez composant, mode, cause, effet.</li>
+    <ol><li>Renseignez d'abord le bloc d'entête (projet, responsable, système, équipe, date, révision).</li>
+    <li>Cliquez <strong>Ajouter un mode</strong> (ou Modifier sur une ligne). Renseignez fonction, mode, effet, cause.</li>
     <li>Notez <strong>F, G, D de 1 à 5</strong> avec l'onglet Échelles (ex. F=4 : environ 1 fois/mois).</li>
+    <li>Pour chaque mode, ajoutez l'<strong>action corrective</strong>, son <strong>responsable</strong> et l'<strong>échéance</strong>, puis estimez <strong>F' et G'</strong> après action (D inchangée).</li>
     <li>Indiquez l'<strong>origine</strong> : <em>observé</em> (vu), <em>rapporté</em> (technicien/rapport), <em>hypothèse</em> (à signaler).</li></ol>
     <h4>2. Lire les résultats</h4>
-    <ol><li><strong>C = F × G × D</strong> se calcule seul. Le tableau se trie par criticité décroissante.</li>
+    <ol><li><strong>C = F × G × D</strong> se calcule seul, ainsi que <strong>C' = F' × G' × D</strong> après action.</li>
     <li><strong>Top 3</strong> : actions prioritaires. <strong>Pareto</strong> : traitez les barres qui font 80 % du cumul.</li>
-    <li><strong>Matrice F×G</strong> : cases rouges : inacceptables, même avec un D faible.</li></ol>
+    <li><strong>Matrice F×G</strong> : cases rouges : inacceptables, même avec un D faible.</li>
+    <li><strong>Comparaison avant/après</strong> : vérifiez que chaque C' passe sous le seuil (gain total affiché).</li></ol>
     <h4>3. Exporter et démontrer en live</h4>
     <ol><li><strong>Excel</strong> (2 onglets : AMDEC + Échelles), <strong>PDF</strong> (tableau + Pareto), CSV/JSON pour archivage.</li>
     <li>Données <strong>sauvegardées dans le navigateur</strong> (localStorage). Exportez le JSON avant de changer de PC.</li>
@@ -166,9 +186,18 @@
     <label for="f-D">D (1–5)</label><select id="f-D"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select>
   </div>
   <div class="grid2">
-    <label for="f-origine">Origine</label><select id="f-origine"><option>observé</option><option>rapporté</option><option>hypothèse</option></select>
-    <label for="f-action">Action proposée</label><input id="f-action" placeholder="ex. Soufflage hebdo">
+    <div><label for="f-origine">Origine</label><select id="f-origine"><option>observé</option><option>rapporté</option><option>hypothèse</option></select></div>
+    <div><label for="f-action">Action corrective</label><input id="f-action" placeholder="ex. Soufflage hebdo"></div>
   </div>
+  <div class="grid2">
+    <div><label for="f-responsable">Responsable</label><input id="f-responsable" placeholder="ex. Maintenance"></div>
+    <div><label for="f-echeance">Échéance</label><input id="f-echeance" placeholder="ex. 15/02/2026"></div>
+  </div>
+  <div class="grid2">
+    <div><label for="f-Fp">F' résiduel (1–5)</label><select id="f-Fp"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+    <div><label for="f-Gp">G' résiduel (1–5)</label><select id="f-Gp"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+  </div>
+  <p class="muted">C' = F' × G' × D (D inchangée). Laissez F'=F et G'=G si l'action ne réduit ni la fréquence ni la gravité.</p>
   <p id="modal-c" class="note" role="status"></p>
   <div class="modal-foot"><button id="modal-cancel" class="btn">Annuler</button><button id="modal-save" class="btn primary">Enregistrer</button></div>
 </div></div>

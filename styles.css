@@ -24,10 +24,14 @@ main { padding:18px 0 40px; }
 .btn.danger-ghost { color:#b91c1c; } .btn.xs { padding:4px 10px; } .btn.danger { color:#b91c1c; }
 .btn:hover { filter:brightness(.96); }
 .search { margin-left:auto; padding:8px 12px; border:1px solid var(--line); border-radius:9px; min-width:240px; min-height:44px; }
-.stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; }
 .stat { background:var(--card); border:1px solid var(--line); border-radius:12px; text-align:center; padding:12px; }
 .stat span { font-size:26px; font-weight:800; } .stat label { display:block; color:var(--mut); font-size:12px; }
-.stat.alert span { color:#b91c1c; }
+.stat.alert span { color:#b91c1c; } .stat.ok span { color:#15803d; }
+.meta-card h3 { margin:0 0 10px; font-size:17px; }
+.meta-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.meta-grid label { display:block; font-size:13px; font-weight:600; }
+.meta-grid input { width:100%; margin-top:4px; padding:9px; border:1px solid var(--line); border-radius:8px; font-size:14px; min-height:44px; }
 .top-item { padding:6px 0; border-bottom:1px dashed var(--line); } .rank { background:#0f172a; color:#fff; border-radius:6px; padding:1px 7px; margin-right:6px; font-size:12px; }
 .table-scroll { overflow-x:auto; }
 table { width:100%; border-collapse:collapse; font-size:14px; }
@@ -63,5 +67,5 @@ td.small { font-size:13px; color:#334155; } td.center { text-align:center; } td.
 #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(80px); background:#0f172a; color:#fff; padding:11px 20px; border-radius:10px; opacity:0; transition:.25s; z-index:99; }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 footer { padding:18px 0 30px; text-align:center; }
-@media (max-width:860px){ .grid3,.grid2,.stats{grid-template-columns:1fr;} .search{margin-left:0;width:100%;} .hero h1{font-size:24px;} }
+@media (max-width:860px){ .grid3,.grid2,.stats,.meta-grid{grid-template-columns:1fr;} .search{margin-left:0;width:100%;} .hero h1{font-size:24px;} }
 @media print { .hero nav,.toolbar,.modal,#toast,footer{display:none!important;} .tab-panel{display:block!important;} .card{break-inside:avoid;} }
