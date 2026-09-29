@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculateur AMDEC : Convoyeur à bande | Sujet 1</title>
+<meta name="description" content="Outil AMDEC : saisie F/G/D, criticité C=F×G×D, tri, Pareto, matrice, exports Excel/PDF. Étude 18 modes + guide.">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="doc-ref">Sujet 1, Séance 2 : rendu final</p>
+    <h1>Calculateur AMDEC <code class="formula">C = F × G × D</code></h1>
+    <p class="sub">Équipement d'étude : <strong>convoyeur à bande motorisé</strong> (stage ouvrier logistique). 6 composants, 18 modes de défaillance. Outil 100 % local, aucune donnée envoyée en ligne.</p>
+    <nav class="tabs" role="tablist" aria-label="Sections du site">
+      <button class="tab-btn active" data-tab="calculateur" role="tab" aria-selected="true" aria-controls="tab-calculateur" id="tabbtn-calculateur">Calculateur</button>
+      <button class="tab-btn" data-tab="graphiques" role="tab" aria-selected="false" aria-controls="tab-graphiques" id="tabbtn-graphiques">Pareto et matrice</button>
+      <button class="tab-btn" data-tab="echelles" role="tab" aria-selected="false" aria-controls="tab-echelles" id="tabbtn-echelles">Échelles F/G/D</button>
+      <button class="tab-btn" data-tab="etude" role="tab" aria-selected="false" aria-controls="tab-etude" id="tabbtn-etude">Étude et Séance 2</button>
+      <button class="tab-btn" data-tab="guide" role="tab" aria-selected="false" aria-controls="tab-guide" id="tabbtn-guide">Guide utilisateur</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ================= CALCULATEUR ================= -->
+<section id="tab-calculateur" class="tab-panel active" role="tabpanel" aria-labelledby="tabbtn-calculateur" tabindex="0">
+  <div class="toolbar">
+    <button id="btn-add" class="btn primary">Ajouter un mode</button>
+    <button id="btn-exemple" class="btn">Charger l'étude exemple (18)</button>
+    <button id="btn-sort" class="btn">Tri : criticité ↓</button>
+    <button id="btn-clear" class="btn danger-ghost">Tout effacer</button>
+    <label class="sr-only" for="search">Filtrer les modes</label>
+    <input id="search" class="search" type="search" placeholder="Filtrer (moteur, bande, sécurité…)">
+  </div>
+  <div class="toolbar exports">
+    <span class="lbl">Exporter :</span>
+    <button id="btn-excel" class="btn success">Excel (.xlsx)</button>
+    <button id="btn-pdf" class="btn success">PDF</button>
+    <button id="btn-csv" class="btn">CSV</button>
+    <button id="btn-json" class="btn">JSON</button>
+    <button id="btn-import" class="btn">Import JSON</button>
+    <input id="file-import" type="file" accept=".json" hidden>
+    <button id="btn-print" class="btn">Imprimer</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span id="stat-total">0</span><label>modes</label></div>
+    <div class="stat"><span id="stat-max">0</span><label>Criticité max</label></div>
+    <div class="stat"><span id="stat-moy">0</span><label>Criticité moyenne</label></div>
+    <div class="stat alert"><span id="stat-crit">0</span><label>modes C &gt; 30</label></div>
+  </div>
+
+  <div class="card">
+    <h3>Top 3 priorités d'action</h3>
+    <div id="top3"></div>
+  </div>
+
+  <div class="card table-card">
+    <div class="table-head"><h3>Tableau AMDEC <span id="count" class="muted"></span></h3><p class="muted">Survolez F/G/D pour voir la définition. Utilisez Modifier pour éditer une ligne.</p></div>
+    <div class="table-scroll"><table>
+      <thead><tr>
+        <th>#</th><th>Composant</th><th>Mode de défaillance</th><th>Cause</th><th>Effet</th>
+        <th>F</th><th>G</th><th>D</th><th>C</th><th>Classe</th><th>Origine</th><th><span class="sr-only">Actions</span></th>
+      </tr></thead>
+      <tbody id="tbody"><tr class="loading-row"><td colspan="12">Chargement des données…</td></tr></tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- ================= GRAPHIQUES ================= -->
+<section id="tab-graphiques" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-graphiques" tabindex="0">
+  <div class="card">
+    <h3>Diagramme de Pareto des criticités (top 15)</h3>
+    <p class="muted">Barres : criticité C par mode (tri décroissant). Courbe : % cumulé.</p>
+    <div class="chart-box"><canvas id="paretoChart" role="img" aria-label="Diagramme de Pareto des criticités"></canvas></div>
+    <p id="pareto-note" class="note" role="status"></p>
+  </div>
+  <div class="card">
+    <h3>Matrice de criticité : Gravité (G) et Fréquence (F)</h3>
+    <p class="muted">Chaque case affiche la criticité max des modes situés en (F, G). Couleur : classe. Survolez pour le détail (D entre en jeu dans C).</p>
+    <div id="matrixGrid" class="matrix"></div>
+    <div class="legend">
+      <span><i class="dot" style="background:#16a34a"></i>Acceptable ≤ 15</span>
+      <span><i class="dot" style="background:#b45309"></i>Surveillance 16–30</span>
+      <span><i class="dot" style="background:#c2410c"></i>Action 31–60</span>
+      <span><i class="dot" style="background:#b91c1c"></i>Inacceptable &gt; 60</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ECHELLES ================= -->
+<section id="tab-echelles" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-echelles" tabindex="0">
+  <div class="card"><h3>Échelles F / G / D (1 à 5), définies avec le terrain de stage</h3>
+    <p class="muted">F : Fréquence. G : Gravité. D : Non-détection (D=5 : indétectable). C = F × G × D, max 125.</p></div>
+  <div class="grid3">
+    <div class="card"><h3>F : Fréquence</h3><div id="ech-F"></div></div>
+    <div class="card"><h3>G : Gravité</h3><div id="ech-G"></div></div>
+    <div class="card"><h3>D : Non-détection</h3><div id="ech-D"></div></div>
+  </div>
+  <div class="card"><h3>Seuils de criticité</h3><div id="seuils" class="seuils"></div>
+    <p class="muted">Règle : C &gt; 30 impose un plan d'action avant la soutenance (voir Top 3). Les modes G=5 passent en revue sécurité même si C est moyen.</p></div>
+</section>
+
+<!-- ================= ETUDE ================= -->
+<section id="tab-etude" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-etude" tabindex="0">
+  <div class="card">
+    <h3>Équipement : convoyeur à bande motorisé CBT-2000</h3>
+    <p><strong>Contexte stage ouvrier (logistique) :</strong> convoyeur de 12 m, bande caoutchouc 650 mm, moteur asynchrone 4 kW + réducteur, 2 tambours + rouleaux porteurs, cellule photoélectrique + fins de course, armoire avec disjoncteur / relais thermique / arrêts d'urgence. Pannes vues (dérives de bande, patinage, encrassement cellules) croisées avec récits techniciens et 3 hypothèses signalées.</p>
+    <div class="comps">
+      <span>1. Bande transporteuse</span><span>2. Moteur électrique</span><span>3. Réducteur / transmission</span>
+      <span>4. Tambours + roulements</span><span>5. Capteurs / automatisme</span><span>6. Armoire électrique</span>
+    </div>
+  </div>
+  <div class="card table-card">
+    <h3>Rendu Séance 2 : Composant, Mode, Cause, Effet, Origine (18 lignes)</h3>
+    <p class="muted">Exigence : 5 composants minimum, 15 modes minimum, origine (observé / rapporté / hypothèse). Les 3 hypothèses sont marquées et justifiées dans le rapport.</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Composant</th><th>Mode de défaillance</th><th>Cause probable</th><th>Effet observé</th><th>Origine</th></tr></thead>
+      <tbody id="seance2-body"></tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- ================= GUIDE ================= -->
+<section id="tab-guide" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-guide" tabindex="0">
+  <div class="card guide">
+    <h3>Guide utilisateur (2 pages, à joindre au rendu)</h3>
+    <h4>1. Saisir (2 min)</h4>
+    <ol><li>Cliquez <strong>Ajouter un mode</strong> (ou Modifier sur une ligne). Renseignez composant, mode, cause, effet.</li>
+    <li>Notez <strong>F, G, D de 1 à 5</strong> avec l'onglet Échelles (ex. F=4 : environ 1 fois/mois).</li>
+    <li>Indiquez l'<strong>origine</strong> : <em>observé</em> (vu), <em>rapporté</em> (technicien/rapport), <em>hypothèse</em> (à signaler).</li></ol>
+    <h4>2. Lire les résultats</h4>
+    <ol><li><strong>C = F × G × D</strong> se calcule seul. Le tableau se trie par criticité décroissante.</li>
+    <li><strong>Top 3</strong> : actions prioritaires. <strong>Pareto</strong> : traitez les barres qui font 80 % du cumul.</li>
+    <li><strong>Matrice F×G</strong> : cases rouges : inacceptables, même avec un D faible.</li></ol>
+    <h4>3. Exporter et démontrer en live</h4>
+    <ol><li><strong>Excel</strong> (2 onglets : AMDEC + Échelles), <strong>PDF</strong> (tableau + Pareto), CSV/JSON pour archivage.</li>
+    <li>Données <strong>sauvegardées dans le navigateur</strong> (localStorage). Exportez le JSON avant de changer de PC.</li>
+    <li>Démo soutenance : ajoutez un mode en direct, puis montrez C, le re-tri et le Pareto qui bouge.</li></ol>
+    <button id="btn-print-guide" class="btn">Imprimer le guide</button>
+  </div>
+</section>
+
+</main>
+
+<footer><div class="wrap muted">Calculateur AMDEC, Sujet 1. C = F × G × D. Données locales (localStorage). Déployable sur GitHub Pages / Netlify / Vercel (voir README).</div></footer>
+
+<!-- Modal -->
+<div id="modal" class="modal"><div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="m-title">
+  <div class="modal-head"><h3 id="m-title">Ajouter</h3><button id="modal-close" class="btn xs" aria-label="Fermer la fenêtre">Fermer</button></div>
+  <label for="f-composant">Composant</label><input id="f-composant" placeholder="ex. Moteur électrique">
+  <label for="f-mode">Mode de défaillance</label><input id="f-mode" placeholder="ex. Échauffement anormal">
+  <label for="f-cause">Cause probable</label><input id="f-cause" placeholder="ex. Surcharge, ventilation encrassée">
+  <label for="f-effet">Effet</label><input id="f-effet" placeholder="ex. Arrêt thermique 30 min">
+  <div class="grid3">
+    <label for="f-F">F (1–5)</label><select id="f-F"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+    <label for="f-G">G (1–5)</label><select id="f-G"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+    <label for="f-D">D (1–5)</label><select id="f-D"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select>
+  </div>
+  <div class="grid2">
+    <label for="f-origine">Origine</label><select id="f-origine"><option>observé</option><option>rapporté</option><option>hypothèse</option></select>
+    <label for="f-action">Action proposée</label><input id="f-action" placeholder="ex. Soufflage hebdo">
+  </div>
+  <p id="modal-c" class="note" role="status"></p>
+  <div class="modal-foot"><button id="modal-cancel" class="btn">Annuler</button><button id="modal-save" class="btn primary">Enregistrer</button></div>
+</div></div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
