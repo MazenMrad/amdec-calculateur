@@ -13,6 +13,7 @@ Outil web + site de rendu final. **Stack choisie : site statique (HTML/CSS/JS)**
 Excel/VBA a été écarté (mono-poste, macros bloquées en soutenance) et Python/Flask aussi (serveur à installer, pas « public » en 1 clic). Le statique se publie sur **GitHub Pages / Netlify / Vercel / Cloudflare Pages** gratuitement.
 
 ## Fonctionnalités (exigences du sujet)
+- [x] Le tableau démarre vide. Tout ajout/modification est sauvegardé dans le navigateur (localStorage) et survit au rechargement. Bouton pour charger l'étude exemple (18 modes)
 - [x] Bloc d'entête : projet, responsable, système, équipe, date, révision (sauvegardé, repris en exports)
 - [x] Saisie fonction, mode, effet, cause, F/G/D (+ origine observé/rapporté/hypothèse)
 - [x] `C = F × G × D` auto + `C' = F' × G' × D` résiduel après action, tri décroissant, Top 3, stats (max, moyenne, nb C>30, C' max, gain total)

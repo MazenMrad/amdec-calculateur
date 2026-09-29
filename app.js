@@ -1,5 +1,5 @@
 /* Calculateur AMDEC : logique applicative (100 % client, localStorage) */
-const LS_KEY = "amdec-lignes-v1";
+const LS_KEY = "amdec-lignes-v2";
 const LS_META = "amdec-meta-v1";
 let lignes = [];
 let meta = { ...META_EXEMPLE };
@@ -41,7 +41,7 @@ function load() {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) { lignes = JSON.parse(raw).map(normalize); return; }
   } catch (e) { /* ignore */ }
-  lignes = ETUDE_EXEMPLE.map((r) => normalize({ ...structuredClone(r) }));
+  lignes = [];
   save();
 }
 function loadMeta() {
