@@ -13,6 +13,7 @@ Outil web + site de rendu final. **Stack choisie : site statique (HTML/CSS/JS)**
 Excel/VBA a été écarté (mono-poste, macros bloquées en soutenance) et Python/Flask aussi (serveur à installer, pas « public » en 1 clic). Le statique se publie sur **GitHub Pages / Netlify / Vercel / Cloudflare Pages** gratuitement.
 
 ## Fonctionnalités (exigences du sujet)
+- [x] Page Machines : créer une machine redirige vers son tableau AMDEC (`#/m/<id>`). Chaque machine a ses propres modes et son entête (localStorage)
 - [x] Le tableau démarre vide. Tout ajout/modification est sauvegardé dans le navigateur (localStorage) et survit au rechargement. Bouton pour charger l'étude exemple (18 modes)
 - [x] Bloc d'entête : projet, responsable, système, équipe, date, révision (sauvegardé, repris en exports)
 - [x] Saisie fonction, mode, effet, cause, F/G/D (+ origine observé/rapporté/hypothèse)
@@ -54,7 +55,7 @@ npx vercel --prod
 ```
 
 ## Fichiers
-- `index.html` : site + app (5 onglets)
+- `index.html` : page Machines, puis le tableau de la machine choisie (5 onglets)
 - `data.js` : échelles + étude 18 modes (modifiez l'équipement ici)
 - `app.js` : calculs, Pareto, matrice, exports
 - `styles.css` : mise en page + impression

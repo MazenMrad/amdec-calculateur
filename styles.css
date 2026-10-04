@@ -59,6 +59,18 @@ td.small { font-size:13px; color:#334155; } td.center { text-align:center; } td.
 .seuils { display:grid; gap:8px; } .seuil { border:1px solid; border-radius:10px; padding:10px; }
 .comps { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; } .comps span { background:#eef2ff; border:1px solid #c7d2fe; border-left:4px solid var(--pri); padding:6px 12px; border-radius:6px; font-size:13px; font-weight:600; }
 .guide h4 { margin:14px 0 6px; } .guide ol { margin:4px 0 10px; } .guide li { margin:4px 0; }
+[hidden] { display:none !important; }
+.crumb { margin:12px 0 0; font-size:14px; }
+.crumb a { color:#bfdbfe; font-weight:700; }
+.machine-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+.machine-card { border:1px solid var(--line); border-radius:12px; padding:14px; background:#f8fafc; display:flex; flex-direction:column; gap:8px; }
+.machine-card h3 { margin:0; font-size:17px; }
+.machine-card p { margin:0; }
+.machine-card .toolbar { margin-top:auto; }
+.machine-empty { margin:0; }
+#view-machines h2, #view-app h2 { margin:0 0 8px; font-size:20px; }
+#form-machine .toolbar { margin-top:12px; }
+#table-machine { font-weight:600; }
 .modal { display:none; position:fixed; inset:0; background:#0008; z-index:50; padding:18px; overflow:auto; }
 .modal.open { display:block; } .modal-box { background:#fff; max-width:640px; margin:4vh auto; border-radius:14px; padding:18px; }
 .modal-head { display:flex; justify-content:space-between; align-items:center; } .modal-box label { display:block; margin:8px 0; font-weight:600; font-size:14px; }
@@ -68,4 +80,4 @@ td.small { font-size:13px; color:#334155; } td.center { text-align:center; } td.
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 footer { padding:18px 0 30px; text-align:center; }
 @media (max-width:860px){ .grid3,.grid2,.stats,.meta-grid{grid-template-columns:1fr;} .search{margin-left:0;width:100%;} .hero h1{font-size:24px;} }
-@media print { .hero nav,.toolbar,.modal,#toast,footer{display:none!important;} .tab-panel{display:block!important;} .card{break-inside:avoid;} }
+@media print { .hero nav,.toolbar,.modal,#toast,footer,#view-machines,.crumb{display:none!important;} .tab-panel{display:block!important;} .card{break-inside:avoid;} }

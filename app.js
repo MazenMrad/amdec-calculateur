@@ -33,25 +33,88 @@ function normalize(l) {
   };
 }
 
-/* ---------- persistance ---------- */
-function save() { localStorage.setItem(LS_KEY, JSON.stringify(lignes)); }
-function saveMeta() { localStorage.setItem(LS_META, JSON.stringify(meta)); }
-function load() {
+/* ---------- machines (une table AMDEC par machine) ---------- */
+const LS_MACHINES = "amdec-machines-v1";
+let machines = [];
+let currentId = null;
+
+function currentMachine() {
+  return machines.find((m) => m.id === currentId) || null;
+}
+
+function saveMachines() {
+  localStorage.setItem(LS_MACHINES, JSON.stringify(machines));
+}
+
+function save() {
+  const m = currentMachine();
+  if (!m) return;
+  m.lignes = lignes;
+  saveMachines();
+}
+
+function saveMeta() {
+  const m = currentMachine();
+  if (!m) return;
+  m.meta = meta;
+  if ((meta.systeme || "").trim()) m.nom = meta.systeme.trim();
+  saveMachines();
+  updateMachineChrome();
+}
+
+function normalizeMachine(m) {
+  const metaM = { ...META_EXEMPLE, ...(m.meta || {}) };
+  const nom = String(m.nom || metaM.systeme || "Machine").trim() || "Machine";
+  if (!String(metaM.systeme || "").trim()) metaM.systeme = nom;
+  return {
+    id: m.id || uid(),
+    nom,
+    createdAt: m.createdAt || new Date().toISOString(),
+    meta: metaM,
+    lignes: Array.isArray(m.lignes) ? m.lignes.map(normalize) : []
+  };
+}
+
+function loadLegacyMachine() {
+  let legacyLignes = null;
+  let legacyMeta = null;
+  let hadLignes = false;
+  let hadMeta = false;
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) { lignes = JSON.parse(raw).map(normalize); return; }
+    if (raw) { legacyLignes = JSON.parse(raw); hadLignes = true; }
   } catch (e) { /* ignore */ }
-  lignes = [];
-  save();
-}
-function loadMeta() {
   try {
     const raw = localStorage.getItem(LS_META);
-    if (raw) { meta = { ...META_EXEMPLE, ...JSON.parse(raw) }; return; }
+    if (raw) { legacyMeta = JSON.parse(raw); hadMeta = true; }
   } catch (e) { /* ignore */ }
-  meta = { ...META_EXEMPLE };
-  saveMeta();
+  if (!hadLignes && !hadMeta) return null;
+  const metaMig = { ...META_EXEMPLE, ...(legacyMeta && typeof legacyMeta === "object" ? legacyMeta : {}) };
+  const nom = String(metaMig.systeme || "Machine existante").trim() || "Machine existante";
+  return normalizeMachine({
+    nom,
+    createdAt: new Date().toISOString(),
+    meta: metaMig,
+    lignes: Array.isArray(legacyLignes) ? legacyLignes : []
+  });
 }
+
+function loadMachines() {
+  try {
+    const raw = localStorage.getItem(LS_MACHINES);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        machines = parsed.map(normalizeMachine);
+        return;
+      }
+    }
+  } catch (e) { /* ignore */ }
+  const legacy = loadLegacyMachine();
+  machines = legacy ? [legacy] : [];
+  saveMachines();
+}
+
 function renderMeta() {
   $("m-projet").value = meta.projet || "";
   $("m-responsable").value = meta.responsable || "";
@@ -59,6 +122,139 @@ function renderMeta() {
   $("m-equipe").value = meta.equipe || "";
   $("m-date").value = meta.date || "";
   $("m-revision").value = meta.revision || "";
+}
+
+function parseRoute() {
+  const h = (location.hash || "#/").replace(/^#/, "") || "/";
+  const match = h.match(/^\/m\/([^/?#]+)/);
+  if (match) return { view: "table", id: decodeURIComponent(match[1]) };
+  return { view: "machines" };
+}
+
+function goToMachine(id) {
+  location.hash = "#/m/" + encodeURIComponent(id);
+}
+
+function updateMachineChrome() {
+  const m = currentMachine();
+  if (!m) return;
+  const crumb = $("machine-crumb");
+  crumb.hidden = false;
+  crumb.innerHTML = `<a href="#/">Machines</a> <span aria-hidden="true">/</span> <strong>${esc(m.nom)}</strong>`;
+  $("hero-sub").textContent = `Tableau spécifique à « ${m.nom} ». Les modes, l'entête et les graphiques de cette machine restent séparés des autres. Enregistrement local dans ce navigateur.`;
+  $("table-machine").textContent = `· ${m.nom}`;
+  document.title = `AMDEC : ${m.nom}`;
+}
+
+function renderMachinesView() {
+  currentId = null;
+  $("view-machines").hidden = false;
+  $("view-app").hidden = true;
+  $("main-tabs").hidden = true;
+  $("machine-crumb").hidden = true;
+  $("hero-sub").textContent = "Ajoutez une machine pour ouvrir son tableau AMDEC. Chaque machine conserve ses modes, son entête et ses graphiques. Outil 100 % local, aucune donnée envoyée en ligne.";
+  document.title = "Calculateur AMDEC : machines";
+  renderMachinesList();
+}
+
+function openMachine(machine) {
+  currentId = machine.id;
+  lignes = (machine.lignes || []).map(normalize);
+  meta = { ...META_EXEMPLE, ...(machine.meta || {}) };
+  $("view-machines").hidden = true;
+  $("view-app").hidden = false;
+  $("main-tabs").hidden = false;
+  updateMachineChrome();
+  renderMeta();
+  renderAll();
+  const calc = document.querySelector('.tab-btn[data-tab="calculateur"]');
+  if (calc) selectTab(calc);
+  const panel = $("tab-calculateur");
+  if (panel) panel.focus();
+}
+
+function renderRoute() {
+  const route = parseRoute();
+  if (route.view === "table") {
+    const machine = machines.find((m) => m.id === route.id);
+    if (!machine) {
+      if (location.hash !== "#/") location.hash = "#/";
+      else renderMachinesView();
+      return;
+    }
+    openMachine(machine);
+    return;
+  }
+  renderMachinesView();
+}
+
+function renderMachinesList() {
+  const box = $("machines-list");
+  box.innerHTML = "";
+  if (!machines.length) {
+    box.innerHTML = `<p class="muted machine-empty">Aucune machine pour le moment. Créez-en une avec le formulaire : vous serez redirigé vers son tableau.</p>`;
+    return;
+  }
+  machines.forEach((m) => {
+    const cs = (m.lignes || []).map((l) => calcC(l));
+    const max = cs.length ? Math.max(...cs) : 0;
+    const crit = cs.filter((c) => c > 30).length;
+    const date = m.createdAt ? new Date(m.createdAt) : null;
+    const dateTxt = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString("fr-FR") : "";
+    const art = document.createElement("article");
+    art.className = "machine-card";
+    art.innerHTML = `
+      <h3>${esc(m.nom)}</h3>
+      <p class="muted">${esc(m.meta?.projet || "Projet non renseigné")}${m.meta?.equipe ? " · " + esc(m.meta.equipe) : ""}${dateTxt ? " · " + dateTxt : ""}</p>
+      <p>${m.lignes.length} mode(s) · C max ${max}${crit ? ` · ${crit} au-dessus de 30` : ""}</p>
+      <div class="toolbar">
+        <a class="btn primary" href="#/m/${encodeURIComponent(m.id)}">Ouvrir le tableau</a>
+        <button type="button" class="btn danger-ghost" data-del-machine="${esc(m.id)}">Supprimer</button>
+      </div>`;
+    box.appendChild(art);
+  });
+  box.querySelectorAll("[data-del-machine]").forEach((b) => {
+    b.addEventListener("click", () => deleteMachine(b.dataset.delMachine));
+  });
+}
+
+function deleteMachine(id) {
+  const m = machines.find((x) => x.id === id);
+  if (!m) return;
+  if (!confirm(`Supprimer « ${m.nom} » et tout son tableau AMDEC ?`)) return;
+  machines = machines.filter((x) => x.id !== id);
+  saveMachines();
+  renderMachinesList();
+  toast("Machine supprimée.");
+}
+
+function submitMachine(e) {
+  e.preventDefault();
+  const nom = $("new-nom").value.trim();
+  if (!nom) {
+    toast("Indiquez le nom de la machine.", true);
+    $("new-nom").focus();
+    return;
+  }
+  const machine = normalizeMachine({
+    id: uid(),
+    nom,
+    createdAt: new Date().toISOString(),
+    meta: {
+      projet: $("new-projet").value.trim(),
+      responsable: $("new-responsable").value.trim(),
+      systeme: nom,
+      equipe: $("new-equipe").value.trim(),
+      date: new Date().toLocaleDateString("fr-FR"),
+      revision: "V1.0"
+    },
+    lignes: []
+  });
+  machines.push(machine);
+  saveMachines();
+  $("form-machine").reset();
+  toast(`Machine « ${nom} » créée.`);
+  goToMachine(machine.id);
 }
 
 /* ---------- onglets ---------- */
@@ -375,7 +571,7 @@ function exportExcel() {
     ...ECHELLES.D.map((e) => ({ Échelle: "D" + e.n + " " + e.label, Définition: e.def }))
   ]);
   XLSX.utils.book_append_sheet(wb, ws2, "Grille d'évaluation");
-  XLSX.writeFile(wb, "AMDEC-convoyeur-bande.xlsx");
+  XLSX.writeFile(wb, exportBaseName() + ".xlsx");
 }
 
 function exportCSV() {
@@ -383,12 +579,12 @@ function exportCSV() {
   const ws = XLSX.utils.json_to_sheet(rowsExport());
   const csv = XLSX.utils.sheet_to_csv(ws);
   const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
-  dl(URL.createObjectURL(blob), "AMDEC-convoyeur-bande.csv");
+  dl(URL.createObjectURL(blob), exportBaseName() + ".csv");
 }
 function dl(href, name) { const a = document.createElement("a"); a.href = href; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(href), 2000); }
 
 function exportJSON() {
-  dl(URL.createObjectURL(new Blob([JSON.stringify(lignes, null, 2)], { type: "application/json" })), "AMDEC-donnees.json");
+  dl(URL.createObjectURL(new Blob([JSON.stringify(lignes, null, 2)], { type: "application/json" })), exportBaseName() + ".json");
 }
 
 function importJSON(file) {
@@ -436,7 +632,16 @@ function exportPDF() {
       doc.addImage(img2, "PNG", 14, 18, 265, 120);
     }
   } catch { /* canvas vide : ignore */ }
-  doc.save("AMDEC-convoyeur-bande.pdf");
+  doc.save(exportBaseName() + ".pdf");
+}
+
+function exportBaseName() {
+  const nom = (currentMachine()?.nom || "machine")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60) || "machine";
+  return "AMDEC-" + nom;
 }
 
 function toast(msg, err) {
@@ -468,7 +673,10 @@ function renderEtude() {
 function renderAll() { renderTable(); }
 
 document.addEventListener("DOMContentLoaded", () => {
-  load(); loadMeta(); initTabs(); renderMeta(); renderEchelles(); renderEtude(); renderAll();
+  loadMachines(); initTabs(); renderEchelles(); renderEtude();
+  $("form-machine").addEventListener("submit", submitMachine);
+  window.addEventListener("hashchange", renderRoute);
+  renderRoute();
   $("btn-add").addEventListener("click", () => openModal(null));
   $("btn-exemple").addEventListener("click", chargerExemple);
   $("btn-clear").addEventListener("click", () => {

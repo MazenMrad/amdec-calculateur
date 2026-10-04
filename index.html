@@ -17,8 +17,9 @@
   <div class="wrap">
     <p class="doc-ref">Sujet 1, Séance 2 : rendu final</p>
     <h1>Calculateur AMDEC <code class="formula">C = F × G × D</code></h1>
-    <p class="sub">Équipement d'étude : <strong>convoyeur à bande motorisé</strong> (stage ouvrier logistique). Commencez avec un tableau vide ou chargez l'étude exemple (18 modes). Outil 100 % local, aucune donnée envoyée en ligne.</p>
-    <nav class="tabs" role="tablist" aria-label="Sections du site">
+    <p class="sub" id="hero-sub">Ajoutez une machine pour ouvrir son tableau AMDEC. Chaque machine conserve ses modes, son entête et ses graphiques. Outil 100 % local, aucune donnée envoyée en ligne.</p>
+    <p id="machine-crumb" class="crumb" hidden></p>
+    <nav class="tabs" id="main-tabs" role="tablist" aria-label="Sections du site" hidden>
       <button class="tab-btn active" data-tab="calculateur" role="tab" aria-selected="true" aria-controls="tab-calculateur" id="tabbtn-calculateur">Calculateur</button>
       <button class="tab-btn" data-tab="graphiques" role="tab" aria-selected="false" aria-controls="tab-graphiques" id="tabbtn-graphiques">Pareto et matrice</button>
       <button class="tab-btn" data-tab="echelles" role="tab" aria-selected="false" aria-controls="tab-echelles" id="tabbtn-echelles">Échelles F/G/D</button>
@@ -29,6 +30,38 @@
 </header>
 
 <main class="wrap">
+
+<section id="view-machines" aria-labelledby="machines-title">
+  <div class="card">
+    <h2 id="machines-title">Ajouter une machine</h2>
+    <p class="muted">Le tableau démarre vide. Après création, vous êtes redirigé vers le tableau AMDEC de cette machine. Le nom remplit le champ Système ; le modifier dans le tableau renomme la machine.</p>
+    <form id="form-machine">
+      <div class="meta-grid">
+        <label for="new-nom">Nom de la machine
+          <input id="new-nom" name="nom" required maxlength="120" placeholder="ex. Convoyeur à bande CBT-2000" autocomplete="off">
+        </label>
+        <label for="new-projet">Projet / processus
+          <input id="new-projet" name="projet" maxlength="120" placeholder="ex. Sujet 1" autocomplete="off">
+        </label>
+        <label for="new-responsable">Responsable
+          <input id="new-responsable" name="responsable" maxlength="120" placeholder="ex. Équipe projet" autocomplete="off">
+        </label>
+        <label for="new-equipe">Équipe
+          <input id="new-equipe" name="equipe" maxlength="120" placeholder="ex. Maintenance / Production" autocomplete="off">
+        </label>
+      </div>
+      <div class="toolbar">
+        <button type="submit" class="btn primary">Créer et ouvrir le tableau</button>
+      </div>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Machines enregistrées</h2>
+    <div id="machines-list" class="machine-grid"></div>
+  </div>
+</section>
+
+<div id="view-app" hidden>
 
 <!-- ================= CALCULATEUR ================= -->
 <section id="tab-calculateur" class="tab-panel active" role="tabpanel" aria-labelledby="tabbtn-calculateur" tabindex="0">
@@ -78,7 +111,7 @@
   </div>
 
   <div class="card table-card">
-    <div class="table-head"><h3>Tableau AMDEC <span id="count" class="muted"></span></h3><p class="muted">Survolez F/G/D pour voir la définition. Utilisez Modifier pour éditer une ligne. F', G', C' : valeurs résiduelles estimées après action corrective (D inchangée).</p></div>
+    <div class="table-head"><h3>Tableau AMDEC <span id="table-machine"></span> <span id="count" class="muted"></span></h3><p class="muted">Survolez F/G/D pour voir la définition. Utilisez Modifier pour éditer une ligne. F', G', C' : valeurs résiduelles estimées après action corrective (D inchangée).</p></div>
     <div class="table-scroll"><table>
       <thead><tr>
         <th>N°</th><th>Fonction</th><th>Mode de défaillance</th><th>Effet</th><th>Cause</th>
@@ -151,7 +184,8 @@
   <div class="card guide">
     <h3>Guide utilisateur (2 pages, à joindre au rendu)</h3>
     <h4>1. Saisir (2 min)</h4>
-    <ol><li>Renseignez d'abord le bloc d'entête (projet, responsable, système, équipe, date, révision).</li>
+    <ol><li>Sur la page <strong>Machines</strong>, créez une machine : vous êtes redirigé vers son tableau. Le lien <strong>Machines</strong> ramène à la liste.</li>
+    <li>Renseignez d'abord le bloc d'entête (projet, responsable, système, équipe, date, révision).</li>
     <li>Cliquez <strong>Ajouter un mode</strong> (ou Modifier sur une ligne). Renseignez fonction, mode, effet, cause.</li>
     <li>Notez <strong>F, G, D de 1 à 5</strong> avec l'onglet Échelles (ex. F=4 : environ 1 fois/mois).</li>
     <li>Pour chaque mode, ajoutez l'<strong>action corrective</strong>, son <strong>responsable</strong> et l'<strong>échéance</strong>, puis estimez <strong>F' et G'</strong> après action (D inchangée).</li>
@@ -168,6 +202,8 @@
     <button id="btn-print-guide" class="btn">Imprimer le guide</button>
   </div>
 </section>
+
+</div>
 
 </main>
 
